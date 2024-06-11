@@ -1,0 +1,125 @@
+﻿-- &: slice
+/*
+SELECT NON EMPTY {[Measures].[Sum Price]} ON COLUMNS,
+NON EMPTY {[Dim Suburb].[Council Area].&[Abbotsford]} ON ROWS
+FROM [Melbourne Dw]
+
+WHERE: 2 dieu kien o 2 dim khac nhau (),
+	2 dieu kien o cung 1 {}
+
+HAVING: ...
+*/
+--Non EMPTY
+-- 1 Thống kê doanh thu ở hội đồng thành phố Banyule từ cube Melbourne Dw
+SELECT NON EMPTY [Measures].[Price] ON COLUMNS,
+NON EMPTY [Dim Suburb].[Council Area].[Council Area].&[Banyule City Council] ON ROWS
+FROM [Melbourne Dw];
+
+--2 Thống kê doanh thu các tháng  ở Tháng 5 và Tháng 7 trong năm 2017.
+SELECT NON EMPTY [Measures].[Price] ON COLUMNS,
+NON EMPTY {
+    ({
+		[Dim Time].[Month].&[5], [Dim Time].[Month].&[7]
+	},
+	[Dim Time].[Year].&[2017]
+	)
+} ON ROWS
+FROM [Melbourne Dw];
+
+--TOP COUNT
+--3 Thống kê 2 tháng có doanh thu cao nhất
+SELECT 
+[Measures].[Price] ON 0,
+TOPCOUNT({[Dim Time].[Month].Children * [Dim Time].[Year].Children}, 2, [Measures].[Price]) ON 1
+FROM [Melbourne Dw];
+
+SELECT [Measures].[Price] ON 0,
+TOPCOUNT({[Dim Time].[Month].Children}, 2, [Measures].[Price]) ON 1
+FROM [Melbourne Dw];
+
+--HAVING
+--4. Thống kê tất cả các THÁNG CỦA NĂM có doanh thu vượt quá 1000000000 đô la.
+SELECT [Measures].[Price] on 0,
+[Dim Time].[Year].children * [Dim Time].[Month].children
+HAVING [Measures].[Price] > 1000000000
+ON 1
+FROM [Melbourne Dw];
+
+--FILTER
+SELECT [Measures].[Price] ON 0,
+GENERATE( 
+  [Dim Time].[Year].CHILDREN,
+  FILTER(
+    [Dim Time].[Year].CURRENTMEMBER * [Dim Time].[Month].Children,
+    [Measures].[Price] > 1000000000
+  )
+) ON 1
+FROM [Melbourne Dw];
+
+--GENERATE
+-- 5. Thống kê 3 loại nhà bán ra nhiều nhất theo từng năm
+SELECT NON EMPTY [Measures].[Fact Count] ON columns,
+NON EMPTY 
+[Dim Type].[Type].children ON rows
+FROM [Melbourne Dw];
+
+
+--6. Thống kê số lượng nhà bán ra theo từng hinh thuc ban
+SELECT NON EMPTY [Measures].[Fact Count] ON columns,
+NON EMPTY 
+[Dim Method].[Method].children ON rows
+FROM [Melbourne Dw];
+
+--7. Thống kê khu vực hội đồng nào có doanh thu từ 500000000 đến 2000000000
+SELECT 
+  NON EMPTY [Measures].[Price] ON COLUMNS,
+  NON EMPTY {
+    Filter(
+      [Dim Suburb].[Council Area].allmembers, 
+      [Measures].[Price] >= 500000000 AND [Measures].[Price] <= 2000000000
+    )
+  } ON ROWS
+FROM [Melbourne Dw];
+
+--8. Thống kê top 3 seller iD có số lượng nhà bán ra cao nhất (không tính seller không bán nhà nào)
+WITH 
+  MEMBER [Measures].[NoEmptyFactCount] AS 
+    IIF(IsEmpty([Measures].[Fact Count]), 0, [Measures].[Fact Count])
+SELECT 
+  NON EMPTY {[Measures].[Fact Count]} ON COLUMNS,
+  NON EMPTY {
+    TopCount(
+      Filter([Dim Seller G].[Seller G].children*[Dim Seller G].[Seller ID].Children, [Measures].[Fact Count] > 0),
+      3, 
+      [Measures].[Fact Count]
+    )} ON ROWS
+FROM [Melbourne Dw];
+
+--9. Thống kê số lượng nhà bán ra theo từng quí của khu ngoại ô Ardeer
+SELECT 
+  NON EMPTY [Measures].[Fact Count] ON COLUMNS,
+  NON EMPTY {
+    {[Dim Suburb].[Suburb].&[Ardeer]} * 
+    (
+      [Dim Time].[Quarter].Children *
+      [Dim Time].[Year].Children
+    )
+  } ON ROWS
+FROM [Melbourne Dw];
+
+
+
+--10. Thống kê khu ngoại ô có số lượng nhà bán cao nhất của từng vùng
+SELECT 
+    [Measures].[Fact Count] ON 0,
+    NON EMPTY 
+    GENERATE(
+        [Dim Suburb].[Regionname].CHILDREN, (
+        TOPCOUNT(
+            [Dim Suburb].[Suburb].CHILDREN,
+            1,
+            ([Measures].[Fact Count])
+        ),
+        [Dim Suburb].[Regionname].CURRENTMEMBER)
+    ) ON 1
+FROM [Melbourne Dw]
