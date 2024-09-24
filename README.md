@@ -3,7 +3,7 @@
 Kho dữ liệu và OLAP - IS217.O22
 
 Họ và tên:
-Nguyễn Ngọc Hà My - 21522351
+Nguyễn Ngọc Hà My - 21522351 <br>
 Ngô Thùy Yến Nhi -21521230
 
 GVHD: Nguyễn Thị Kim Phụng
